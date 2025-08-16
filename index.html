@@ -1,0 +1,750 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Game by Alisa – Hafe Fun Ya Guys!</title>
+<link href="https://fonts.googleapis.com/css2?family=Comic+Neue:wght@400;700&display=swap" rel="stylesheet">
+<style>
+/* --- Style Umum --- */
+body {
+    font-family: 'Comic Neue', cursive;
+    margin:0; padding:0;
+    background: linear-gradient(135deg, #ff9a9e, #fad0c4);
+    display:flex; flex-direction:column; align-items:center;
+    min-height:100vh; color:#333;
+}
+header {
+    text-align:center; padding:20px;
+}
+header h1 {
+    font-size:2.8em; color:#fff; text-shadow:2px 2px 5px #000;
+}
+header p {margin:5px 0 15px; font-size:1.2em; color:#fff;}
+header a {
+    color:#fff; font-weight:bold; text-decoration:none;
+    background:rgba(0,0,0,0.3); padding:5px 10px; border-radius:10px;
+    transition:all 0.3s;
+}
+header a:hover {background:rgba(0,0,0,0.6);}
+.container {
+    background: rgba(255,255,255,0.95);
+    border-radius:20px; padding:30px; margin:20px; max-width:700px;
+    box-shadow:0 10px 25px rgba(0,0,0,0.2);
+    overflow:hidden; position:relative;
+}
+h2 {text-align:center; color:#ff6f91;}
+.question {margin:20px 0; opacity:0; transform:translateY(30px); transition:all 0.6s ease;}
+.question.show {opacity:1; transform:translateY(0);}
+.options button {
+    display:block; width:100%; margin:10px 0; padding:12px;
+    font-size:1em; border:none; border-radius:12px;
+    cursor:pointer; transition:all 0.3s; color:#fff;
+}
+.options button:hover {transform:scale(1.1); animation: pulse 1s infinite;}
+@keyframes pulse {
+    0% {box-shadow:0 0 5px #fff;}
+    50% {box-shadow:0 0 20px #fff;}
+    100% {box-shadow:0 0 5px #fff;}
+}
+.result {text-align:center; margin-top:20px; font-size:1.3em; color:#6a11cb;}
+.popup {
+    position:absolute; font-size:2em; opacity:0; transition: all 0.6s ease; pointer-events:none;
+}
+canvas {position:absolute; top:0; left:0; pointer-events:none;}
+/* --- Bagian Tambahan untuk blog bisa ditambah di bawah container --- */
+.blog-section {
+    max-width:700px;
+    width:100%;
+    margin:20px;
+    background: rgba(255,255,255,0.95);
+    padding:20px;
+    border-radius:20px;
+    box-shadow:0 10px 25px rgba(0,0,0,0.2);
+}
+</style>
+</head>
+<body>
+
+<header>
+    <h1>Game by Alisa – Hafe Fun Ya Guys!</h1>
+    <p>ini hanya untuk senang senang yah hehe!</p>
+    <a href="https://www.instagram.com/alisa__ich?igsh=OXh3YzR4aHo0cXU0&utm_source=qr" target="_blank">@ignya mimin</a>
+</header>
+
+<div class="container">
+    <h2>Mulai Tes Kepribadian</h2>
+    <div id="quiz"></div>
+    <div class="result" id="result"></div>
+    <canvas id="confetti"></canvas>
+</div>
+
+<!-- --- Tempat untuk Blog / Konten Tambahan --- -->
+<div class="blog-section" id="blog-section">
+    <!-- Nanti kamu bisa tambah artikel, tips, atau infografis di sini -->
+</div>
+
+<!-- --- Sound Effect --- -->
+<audio id="clickSound" src="https://www.soundjay.com/buttons/sounds/button-16.mp3"></audio>
+<audio id="resultSound" src="https://www.soundjay.com/misc/sounds/bell-ringing-05.mp3"></audio>
+
+<!-- --- Script Modular --- -->
+<script>
+// --- Pertanyaan & Hasil (Bisa dikembangkan lagi) ---
+const questions = [
+{q:"1. Pilih warna favoritmu:", options:["Merah","Biru","Hijau","Kuning"]},
+{q:"2. Pilih hewan peliharaan idealmu:", options:["Kucing","Anjing","Burung","Ikan"]},
+{q:"3. Musik favoritmu adalah:", options:["Pop","Rock","Jazz","EDM"]},
+{q:"4. Tempat liburan impian:", options:["Pantai","Gunung","Kota","Desa"]},
+{q:"5. Aktivitas akhir pekan:", options:["Nonton Film","Main Game","Olahraga","Liburan"]},
+{q:"6. Minuman favorit:", options:["Teh","Kopi","Jus","Soda"]},
+{q:"7. Superpower yang diinginkan:", options:["Terbang","Teleport","Membaca Pikiran","Tak Terkalahkan"]},
+{q:"8. Gaya berpakaianmu:", options:["Casual","Formal","Sporty","Fashionable"]},
+{q:"9. Hobby utama:", options:["Melukis","Menulis","Musik","Olahraga"]},
+{q:"10. Pilih makanan favorit:", options:["Nasi Goreng","Bakso","Mie Ayam","Ayam Geprek","Gado-Gado"]}
+];
+
+const results = [
+"Kamu ceria dan penuh energi! 🌟",
+"Kamu pemikir yang dalam 🤔",
+"Kamu kreatif dan imajinatif 🎨",
+"Kamu penyayang dan peduli ❤️",
+"Kamu pemberani 💪",
+"Kamu santai dan menikmati hidup 😎",
+"Kamu misterius dan menarik 🕵️‍♂️",
+"Kamu petualang dan penuh semangat 🏞️",
+"Kamu humoris dan lucu 😂",
+"Kamu fokus dan disiplin 📚"
+];
+
+// --- Variabel Global ---
+let currentQuestion = 0;
+let userAnswers = [];
+const clickSound = document.getElementById('clickSound');
+const resultSound = document.getElementById('resultSound');
+const quizDiv = document.getElementById('quiz');
+const resultDiv = document.getElementById('result');
+const canvas = document.getElementById('confetti');
+const ctx = canvas.getContext('2d');
+canvas.width = canvas.offsetWidth;
+canvas.height = canvas.offsetHeight;
+let confettiParticles = [];
+
+// --- Confetti ---
+function createConfetti() {
+    confettiParticles = [];
+    for(let i=0;i<150;i++){
+        confettiParticles.push({
+            x: Math.random()*canvas.width,
+            y: Math.random()*canvas.height - canvas.height,
+            r: Math.random()*6+4,
+            d: Math.random()*150+50,
+            color:`hsl(${Math.random()*360},100%,50%)`,
+            tilt: Math.random()*10-10,
+            tiltAngleIncremental: Math.random()*0.07+0.05,
+            tiltAngle:0
+        });
+    }
+}
+
+function drawConfetti(){
+    ctx.clearRect(0,0,canvas.width,canvas.height);
+    confettiParticles.forEach(p=>{
+        ctx.beginPath();
+        ctx.lineWidth = p.r/2;
+        ctx.strokeStyle = p.color;
+        ctx.moveTo(p.x+p.tilt+p.r/4, p.y);
+        ctx.lineTo(p.x+p.tilt, p.y+p.tilt+ p.r/4);
+        ctx.stroke();
+    });
+    updateConfetti();
+}
+
+function updateConfetti(){
+    confettiParticles.forEach(p=>{
+        p.tiltAngle += p.tiltAngleIncremental;
+        p.y += (Math.cos(p.d)+3+p.r/2)/2;
+        p.x += Math.sin(p.tiltAngle)*2;
+        p.tilt = Math.sin(p.tiltAngle)*15;
+        if(p.y>canvas.height){p.y=-10;p.x=Math.random()*canvas.width;}
+    });
+    requestAnimationFrame(drawConfetti);
+}
+
+// --- Popup Emoji ---
+function showPopup(text, x, y){
+    const popup = document.createElement('div');
+    popup.className = 'popup';
+    popup.style.left = x+'px';
+    popup.style.top = y+'px';
+    popup.innerText = text;
+    document.querySelector('.container').appendChild(popup);
+    setTimeout(()=>{
+        popup.style.opacity = 1;
+        popup.style.transform = 'translateY(-50px) scale(1.5)';
+    },50);
+    setTimeout(()=>{popup.remove();},1000);
+}
+
+// --- Fungsi Quiz ---
+function showQuestion(){
+    if(currentQuestion >= questions.length){ showResult(); return; }
+    const q = questions[currentQuestion];
+    let html = `<div class="question"><p>${q.q}</p><div class="options">`;
+    q.options.forEach(opt=>{
+        html += `<button onclick="chooseAnswer('${opt}',event)">${opt}</button>`;
+    });
+    html += `</div></div>`;
+    quizDiv.innerHTML = html;
+
+    const questionEl = document.querySelector('.question');
+    setTimeout(()=>{questionEl.classList.add('show');},50);
+
+    const buttons = document.querySelectorAll('.options button');
+    buttons.forEach(btn=>{
+        btn.style.background = `hsl(${Math.random()*360},70%,60%)`;
+    });
+}
+
+function chooseAnswer(answer, e){
+    clickSound.play();
+    const rect = e.target.getBoundingClientRect();
+    showPopup('✨', rect.left+rect.width/2 - 15, rect.top - 30);
+    userAnswers.push(answer);
+    currentQuestion++;
+    setTimeout(showQuestion,300);
+}
+
+function showResult(){
+    quizDiv.innerHTML='';
+    const randomIndex = Math.floor(Math.random()*results.length);
+    resultDiv.innerHTML = `<p>Jawabanmu: <strong>${userAnswers.join(', ')}</strong></p><p>${results[randomIndex]}</p>`;
+    resultSound.play();
+    createConfetti();
+    drawConfetti();
+}
+
+// --- Mulai Quiz ---
+showQuestion();
+</script>
+
+</body>
+</html>
+
+<!-- ===== Blog Semangat Lucu Klik-able Bergerak by Alisa ===== -->
+<section id="blog-semangat-lucu" class="bsl-wrap">
+  <div class="bsl-container">
+    <h1 class="main-title">✨ Kata-Kata Semangat Absurd dari Mimin ✨</h1>
+    <p>Klik tombol absurd di bawah ini berulang kali anggap aja olahraga jempol hehe!</p>
+
+    <button id="funnyButton" class="funny-btn">👉 Klik Aku 😂 👈</button>
+    <div id="quoteBox" class="quote-box"></div>
+  </div>
+</section>
+
+<!-- Musik lucu otomatis -->
+<audio id="funnyMusic" autoplay loop>
+  <source src="https://www.bensound.com/bensound-music/bensound-funkyelement.mp3" type="audio/mpeg">
+</audio>
+
+<!-- Sound effect lucu -->
+<audio id="sound-pop" src="https://www.soundjay.com/buttons/sounds/button-16.mp3"></audio>
+<audio id="sound-boing" src="https://www.soundjay.com/button/sounds/button-10.mp3"></audio>
+<audio id="sound-meow" src="https://www.fesliyanstudios.com/play-mp3/387"></audio>
+<audio id="sound-duck" src="https://www.fesliyanstudios.com/play-mp3/6297"></audio>
+
+<style>
+  .bsl-wrap {
+    background: linear-gradient(135deg,#fef9c3,#e0f2fe);
+    padding: 56px 16px;
+    text-align: center;
+    font-family: "Comic Sans MS", cursive;
+    position: relative;
+    overflow: hidden;
+  }
+  .bsl-container { max-width: 700px; margin: auto; }
+  .main-title {
+    font-size: clamp(28px,4vw,42px);
+    color: #ff4d6d;
+    margin-bottom: 10px;
+    text-shadow: 2px 2px #fff176;
+    animation: wiggle 2s infinite;
+  }
+  p { color: #64748b; margin-bottom: 20px; font-size: 18px; }
+  .funny-btn {
+    position: relative;
+    background: #ff90bc;
+    border: none;
+    border-radius: 50px;
+    padding: 16px 28px;
+    font-size: 20px;
+    cursor: pointer;
+    font-weight: bold;
+    animation: bounce 2s infinite;
+    transition: 0.3s ease;
+  }
+  .funny-btn:hover { transform: scale(1.1) rotate(3deg); }
+  .quote-box {
+    margin-top: 26px;
+    min-height: 80px;
+    font-size: 20px;
+    font-weight: 600;
+    line-height: 1.5;
+    color: #1f2937;
+  }
+  @keyframes bounce {
+    0%,100% { transform: translateY(0); }
+    50% { transform: translateY(-10px); }
+  }
+  @keyframes wiggle {
+    0%,100% { transform: rotate(0deg); }
+    25% { transform: rotate(2deg); }
+    75% { transform: rotate(-2deg); }
+  }
+  .emoji {
+    position: absolute;
+    top: -40px;
+    font-size: 28px;
+    animation: fall linear forwards;
+    pointer-events: none;
+  }
+  @keyframes fall {
+    to { transform: translateY(110vh) rotate(360deg); opacity: .8; }
+  }
+</style>
+
+<script>
+(function(){
+  const funnyBtn = document.getElementById("funnyButton");
+  const quoteBox = document.getElementById("quoteBox");
+
+  const QUOTES = [
+    "Hidupmu lagi pahit coba deh ngaca dulu pasti makin pahit. 😂",
+    "Kalau lagi bete, inget… kucing jatuh dari lemari aja masih sok cool kayak ga terjadi apa-apa 🐱🤣",
+    "Hidup itu kayak sinetron, banyak plot twist... jadi jangan buru-buru skip channel 📺",
+    "Semangat bro, jangan rebahan terus... kasurmu juga capek nahan beban hidupmu 🛏️🤣",
+    "Capek kerja? Relax… bebek karet aja kerjanya cuma ‘kwek kwek’ di bak mandi 🦆🚿😆",
+    "Jangan nyerah, harus tetap semangat kayak kalau kamu lagi velocity jedag jedug 😎",
+    "Kalau hidup lagi berat, coba ingat... tas kresek aja kuat nahan beban belanjaan emak-emak 🛍️😅",
+    "Capek? Wajar. Tapi jangan lupa ketawa, biar nggak keriput sebelum waktunya 😂👵"
+  ];
+
+  const SOUNDS = [
+    document.getElementById("sound-pop"),
+    document.getElementById("sound-boing"),
+    document.getElementById("sound-meow"),
+    document.getElementById("sound-duck")
+  ];
+
+  funnyBtn.addEventListener("click", ()=>{
+    // Tampilkan kata random
+    const randomQuote = QUOTES[Math.floor(Math.random()*QUOTES.length)];
+    quoteBox.textContent = randomQuote;
+
+    // Putar sound random
+    const sound = SOUNDS[Math.floor(Math.random()*SOUNDS.length)];
+    sound.currentTime = 0;
+    sound.play();
+
+    // Bikin tombol kabur ke posisi random (bergerak ke sana kemari)
+    const parent = funnyBtn.parentElement;
+    const maxX = parent.offsetWidth - funnyBtn.offsetWidth;
+    const maxY = 200; // batas area gerak tombol
+    const randX = Math.random() * maxX;
+    const randY = Math.random() * maxY;
+    funnyBtn.style.position = "absolute";
+    funnyBtn.style.left = randX + "px";
+    funnyBtn.style.top = randY + "px";
+  });
+
+  // Hujan emoji absurd
+  const EMOJIS = ["😂","🤣","😜","🦆","🐱","🍌","🛏️","📺","👵","🎉","🥒","🦖"];
+  function spawnEmoji(){
+    const span=document.createElement("span");
+    span.className="emoji";
+    span.textContent=EMOJIS[Math.floor(Math.random()*EMOJIS.length)];
+    span.style.left=Math.random()*100+"vw";
+    span.style.animationDuration=(3+Math.random()*5)+"s";
+    document.querySelector(".bsl-wrap").appendChild(span);
+    setTimeout(()=>span.remove(),8000);
+  }
+  setInterval(spawnEmoji,500);
+})();
+</script>
+<!-- ===== End Blog Semangat Lucu Klik-able Bergerak by Alisa ===== -->
+
+
+<!doctype html>
+<html lang="id">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <title>Yuk Guys, Berikan Quotes Kalian Hari Ini!</title>
+  <style>
+    :root{
+      --bg:linear-gradient(135deg,#ff9a9e,#fad0c4,#fad390);
+      --card:#ffffff;--accent:#ff6b6b;--muted:#6b7280;
+    }
+    *{box-sizing:border-box}
+    body{margin:0;font-family:"Segoe UI",Roboto,Helvetica,Arial,sans-serif;background:var(--bg);color:#1e293b;min-height:100vh;padding:20px;display:flex;justify-content:center;}
+    .container{width:100%;max-width:800px}
+
+    header{text-align:center;margin-bottom:20px}
+    h1{font-size:26px;margin:0;color:#ef4444;text-shadow:1px 1px 2px rgba(0,0,0,0.2)}
+    p.lead{margin:6px 0 0;color:#374151;font-size:14px}
+
+    .card{background:var(--card);border:1px solid #e2e8f0;padding:18px;border-radius:16px;box-shadow:0 6px 16px rgba(0,0,0,0.15)}
+
+    form{display:flex;flex-direction:column;gap:10px}
+    label{font-size:13px;color:var(--muted)}
+    input[type=text], textarea{width:100%;padding:10px;border-radius:8px;border:1px solid #cbd5e1;font-size:14px}
+    textarea{min-height:80px;resize:vertical}
+
+    .options{display:flex;gap:14px;flex-wrap:wrap;font-size:13px;margin-top:4px}
+    .options label{display:flex;gap:6px;align-items:center}
+
+    button{cursor:pointer;border:0;padding:10px 14px;border-radius:8px;background:var(--accent);color:#fff;font-weight:600;font-size:14px;transition:0.2s}
+    button:hover{background:#e11d48}
+    .ghost{background:#f1f5f9;color:#475569;border:1px solid #cbd5e1}
+    .ghost:hover{background:#e2e8f0}
+
+    .preview{background:#fff7ed;border:1px dashed #fbbf24;border-radius:12px;padding:12px;margin-top:10px}
+    .preview .meta{font-size:12px;color:#d97706;margin-bottom:6px}
+
+    .quotes{margin-top:20px;display:grid;gap:12px}
+    .quote{background:var(--card);border:1px solid #fcd34d;padding:14px;border-radius:12px;box-shadow:0 4px 10px rgba(0,0,0,0.08)}
+    .quote .meta{font-size:12px;color:#6b7280;margin-bottom:6px}
+    .quote .qtext{font-size:15px;line-height:1.5;color:#0f172a}
+    .actions{margin-top:10px;display:flex;gap:8px}
+
+    .empty{text-align:center;color:#6b7280;padding:20px}
+
+    footer{text-align:center;font-size:12px;color:#6b7280;margin-top:14px}
+  </style>
+</head>
+<body>
+  <div class="container">
+    <header>
+      <h1>Yuk Guys, Berikan Quotes Kalian Hari Ini!</h1>
+      <p class="lead">Tulis nama asli atau samaran & bagikan quotes terbaikmu di sini ✨</p>
+    </header>
+
+    <section class="card">
+      <form id="quoteForm" autocomplete="off">
+        <div>
+          <label>Nama (bisa asli atau samaran)</label>
+          <input id="nameInput" type="text" placeholder="Contoh: Alisa / Anonim" maxlength="50" />
+        </div>
+        <div>
+          <label>Quotes</label>
+          <textarea id="quoteInput" placeholder="Tulis quotes singkat yang menginspirasi..." maxlength="300"></textarea>
+        </div>
+        <div class="options">
+          <label><input id="showName" type="checkbox" checked /> Tampilkan nama</label>
+          <label><input id="allowPublic" type="checkbox" checked /> Izinkan tampil publik</label>
+        </div>
+        <div style="display:flex;gap:10px;flex-wrap:wrap">
+          <button id="submitBtn" type="button">Kirim & Tampilkan</button>
+          <button id="clearBtn" type="button" class="ghost">Bersihkan Form</button>
+        </div>
+        <div class="preview">
+          <div class="meta">— <span id="pvName">Nama</span> · <span id="pvTime">sekarang</span></div>
+          <div class="qtext" id="pvText">(quotes akan muncul di sini saat mengetik)</div>
+        </div>
+      </form>
+
+      <div id="quotesArea" class="quotes">
+        <div class="empty">Belum ada quotes. Isi form di atas untuk menambahkan!</div>
+      </div>
+
+      <footer>
+        Quotes tersimpan di <b>localStorage</b> browser ini. Hanya terlihat oleh perangkat & browser yang sama.
+      </footer>
+    </section>
+  </div>
+
+  <script>
+    function escapeHtml(s){
+      return String(s)
+        .replace(/&/g,'&amp;')
+        .replace(/</g,'&lt;')
+        .replace(/>/g,'&gt;')
+        .replace(/\"/g,'&quot;')
+        .replace(/'/g,'&#039;');
+    }
+
+    const LS_KEY = 'alisa_blog_quotes_v3';
+    const nameInput = document.getElementById('nameInput');
+    const quoteInput = document.getElementById('quoteInput');
+    const showName = document.getElementById('showName');
+    const allowPublic = document.getElementById('allowPublic');
+    const submitBtn = document.getElementById('submitBtn');
+    const clearBtn = document.getElementById('clearBtn');
+    const previewName = document.getElementById('pvName');
+    const previewText = document.getElementById('pvText');
+    const previewTime = document.getElementById('pvTime');
+    const quotesArea = document.getElementById('quotesArea');
+
+    function nowFormatted(){
+      return new Date().toLocaleString();
+    }
+
+    function loadQuotes(){
+      try{
+        const raw = localStorage.getItem(LS_KEY);
+        return raw? JSON.parse(raw) : [];
+      }catch(e){return []}
+    }
+    function saveQuotes(list){
+      localStorage.setItem(LS_KEY, JSON.stringify(list));
+    }
+
+    function renderList(){
+      const list = loadQuotes();
+      quotesArea.innerHTML = '';
+      if(list.length===0){
+        quotesArea.innerHTML = '<div class="empty">Belum ada quotes.</div>';
+        return;
+      }
+      list.slice().reverse().forEach(item=>{
+        const el = document.createElement('div'); el.className='quote';
+        const meta = document.createElement('div'); meta.className='meta';
+        meta.innerHTML = (item.showName ? escapeHtml(item.name||'Anonim') : 'Anonim') + ' · ' + escapeHtml(item.time);
+        const qtext = document.createElement('div'); qtext.className='qtext'; qtext.innerHTML = escapeHtml(item.text);
+
+        const actions = document.createElement('div'); actions.className='actions';
+        const copyBtn = document.createElement('button'); copyBtn.className='ghost'; copyBtn.textContent='Salin';
+        copyBtn.onclick=()=>{navigator.clipboard?.writeText(item.text).then(()=>{copyBtn.textContent='Disalin!';setTimeout(()=>copyBtn.textContent='Salin',1000)})}
+
+        const delBtn = document.createElement('button'); delBtn.className='ghost'; delBtn.textContent='Hapus';
+        delBtn.onclick=()=>{if(confirm('Hapus quotes ini?')){ const all=loadQuotes().filter(q=>q.id!==item.id); saveQuotes(all); renderList(); }}
+
+        actions.append(copyBtn,delBtn);
+
+        el.append(meta,qtext,actions);
+        quotesArea.appendChild(el);
+      })
+    }
+
+    function updatePreview(){
+      previewName.textContent = showName.checked ? (nameInput.value||'Anonim') : 'Anonim';
+      previewText.textContent = quoteInput.value || '(quotes akan muncul di sini saat mengetik)';
+      previewTime.textContent = nowFormatted();
+    }
+
+    nameInput.addEventListener('input', updatePreview);
+    quoteInput.addEventListener('input', updatePreview);
+    showName.addEventListener('change', updatePreview);
+
+    submitBtn.addEventListener('click', ()=>{
+      const text = quoteInput.value.trim();
+      if(!text){ alert('Quotes tidak boleh kosong.'); return; }
+      const entry = {
+        id: Date.now()+Math.random(),
+        name: nameInput.value.trim(),
+        text,
+        showName: showName.checked,
+        public: allowPublic.checked,
+        time: nowFormatted()
+      };
+      const all = loadQuotes();
+      all.push(entry);
+      saveQuotes(all);
+      quoteInput.value='';
+      renderList();
+      updatePreview();
+      submitBtn.textContent='Terkirim ✓';
+      setTimeout(()=>submitBtn.textContent='Kirim & Tampilkan',1000);
+    });
+
+    clearBtn.addEventListener('click', ()=>{
+      nameInput.value=''; quoteInput.value=''; updatePreview();
+    });
+
+    updatePreview();
+    renderList();
+  </script>
+</body>
+</html>
+
+<!-- ===== Penutup Kocak + Footer Keren AutoPlay by Alisa ===== -->
+<section id="blog-penutup-kocak" class="penutup-wrap">
+  <div class="penutup-container">
+    <h2 class="bye-title">🎭 Penutup Absurd, by.A🎭</h2>
+    <p class="bye-text">
+      Oke gengs, segini dulu kata-kata semangat absurd dari mimin 🤡.<br>
+      Kalau masih kurang semangat... yaudah semangat aja sendiri 💃🕺.<br>
+      Ingat: hidup itu kayak sandal jepit, kadang ilang sebelah, tapi tetep harus jalan 👣😂.
+    </p>
+
+    <button id="lastBtn" class="last-btn rainbow">👉 pencet berkali-kali lagi yah 😜 👈</button>
+    <div id="lastMsg" class="last-msg" aria-live="polite"></div>
+
+    <!-- audio efek lucu -->
+    <audio id="funnySound"><source src="https://www.myinstants.com/media/sounds/cartoon-fail.mp3" type="audio/mpeg"></audio>
+    <audio id="funnySound2"><source src="https://www.myinstants.com/media/sounds/vine-boom.mp3" type="audio/mpeg"></audio>
+
+    <!-- musik absurd latar auto -->
+    <audio id="bgMusic" autoplay loop muted>
+      <source src="https://www.bensound.com/bensound-music/bensound-funnysong.mp3" type="audio/mpeg">
+    </audio>
+    <div style="margin-top:12px;">
+      <button id="toggleMusic" class="music-btn" aria-pressed="false">🔊 Musik On/Off</button>
+    </div>
+  </div>
+
+  <!-- animated wave footer -->
+  <div class="footer-wave" aria-hidden="true">
+    <svg viewBox="0 0 120 28" preserveAspectRatio="none">
+      <defs>
+        <linearGradient id="g1" x1="0%" x2="100%">
+          <stop offset="0%" stop-color="#ffd6e0"/>
+          <stop offset="100%" stop-color="#e0f7ff"/>
+        </linearGradient>
+      </defs>
+      <path class="wave-path" d="M0 20 C 20 0 40 40 60 20 C80 0 100 40 120 20 L120 30 L0 30 Z" fill="url(#g1)"></path>
+    </svg>
+  </div>
+
+  <!-- footer content -->
+  <footer class="site-footer">
+    <div class="footer-inner">
+      <div class="footer-col">
+        <h3>About Mimin</h3>
+        <p>Semangat absurd & receh — dibuat biar saling receh bareng wkwk = sekian terimagaji</p>
+      </div>
+      <div class="footer-col">
+        <h3>Quick</h3>
+        <ul>
+          <li><a href="#blog-semangat-lucu">Alisaworks.com</a></li>
+          <li><a href="#blog-semangat-keren">wkwk.today</a></li>
+          <li><a href="#blog-penutup-kocak">Penutup</a></li>
+        </ul>
+      </div>
+      <div class="footer-col">
+        <h3>Stay</h3>
+        <p><small>© <span id="year"></span> Mimin Absurd — Tetap kocak, tetap semangat.</small></p>
+        <button id="toTop" class="to-top" title="Kembali ke atas">⬆️ Top</button>
+      </div>
+    </div>
+  </footer>
+</section>
+
+<style>
+/* ===== Penutup + Footer Styles ===== */
+.penutup-wrap {
+  background: linear-gradient(135deg,#f9c2ff,#ffd7d1,#d1ffd9);
+  padding: 48px 16px 0 16px;
+  text-align: center;
+  font-family: "Comic Sans MS", cursive;
+  position: relative;
+}
+.penutup-container{ max-width:980px;margin:0 auto;padding-bottom:40px }
+.bye-title{ 
+  font-size:clamp(24px,3.6vw,40px); 
+  color:#fff; 
+  text-shadow:2px 2px #000; 
+  animation:bounce 2.2s infinite; 
+  margin:0 0 10px 
+}
+.bye-text{ font-size:16px;color:#1f2937;margin:0 0 18px;line-height:1.6 }
+.last-btn{
+  background:#ff6b6b;border:none;border-radius:50px;padding:12px 22px;font-size:18px;font-weight:700;color:#fff;
+  cursor:pointer;box-shadow:0 6px 18px rgba(0,0,0,.18); animation:pulse 1.6s infinite; transition:transform .25s ease;
+  position:relative;
+}
+.last-btn:hover{ transform:scale(1.08) rotate(-3deg) }
+.rainbow { 
+  background: linear-gradient(90deg, red, orange, yellow, green, blue, indigo, violet); 
+  background-size: 400%; 
+  animation: rainbowAnim 6s linear infinite; 
+}
+.last-msg{ margin-top:18px;font-size:18px;font-weight:700;color:#2b2b2b; min-height:40px }
+
+/* music btn */
+.music-btn{ margin-top:8px;padding:8px 14px;border-radius:20px;border:none;background:#4ade80;color:#fff;font-weight:700;cursor:pointer }
+
+/* wave */
+.footer-wave{ width:100%; overflow:hidden; line-height:0; margin-top:10px }
+.footer-wave svg{ width:100%; height:70px; display:block }
+.wave-path{ animation:waveMove 5s linear infinite }
+
+/* footer */
+.site-footer{ background:linear-gradient(180deg,#fff,#f7f7fb); padding:28px 16px 48px; text-align:left }
+.footer-inner{ max-width:980px;margin:0 auto; display:grid; grid-template-columns: repeat(auto-fit, minmax(200px,1fr)); gap:18px; align-items:start }
+.footer-col h3{ margin:0 0 8px; font-size:16px }
+.footer-col p, .footer-col ul, .footer-col small{ margin:0; color:#374151 }
+.footer-col ul{ list-style:none;padding:0 }
+.footer-col ul li{ margin:6px 0 }
+.footer-col ul a{ color:#111827; text-decoration:none; opacity:.9 }
+.to-top{ margin-top:10px; padding:8px 12px; border-radius:12px; border:none;background:#60a5fa;color:#fff; cursor:pointer }
+
+/* emoji fall */
+.emoji{ position:absolute; top:-40px; font-size:26px; animation:fall linear forwards; pointer-events:none; filter:drop-shadow(0 6px 12px rgba(0,0,0,.12)) }
+
+/* Animations */
+@keyframes fall{ to{ transform:translateY(110vh) rotate(360deg); opacity:.85 } }
+@keyframes bounce{ 0%,100%{transform:translateY(0)}50%{transform:translateY(-8px)} }
+@keyframes pulse{ 0%,100%{transform:scale(1)}50%{transform:scale(1.1)} }
+@keyframes rainbowAnim { 0%{background-position:0% 50%}100%{background-position:100% 50%} }
+@keyframes waveMove { from { transform: translateX(0);} to { transform: translateX(-50%);} }
+</style>
+
+<script>
+(function(){
+  const lastBtn = document.getElementById("lastBtn");
+  const lastMsg = document.getElementById("lastMsg");
+  const funnySound = document.getElementById("funnySound");
+  const funnySound2 = document.getElementById("funnySound2");
+  const bgMusic = document.getElementById("bgMusic");
+  const toggleMusic = document.getElementById("toggleMusic");
+  const toTop = document.getElementById("toTop");
+  const year = document.getElementById("year");
+
+  const LAST_QUOTES = [
+    "Udahan dulu ya gengs... mimin juga mau rebahan 🛏️🤣",
+    "Thanks udah mampir... jangan lupa minum air biar ga kayak kaktus 🌵😂",
+    "Kalo masih kurang semangat... coba joget jedag jedug sendiri karena mimin ngak bisa joged cuman bisa gerakan tangan doang 🎶🕺💃",
+    "Oke bye... jangan lupa tinggalkan jejak jempolnya di slide bagian atas yah⚡",
+    "Sudah selesai... lanjutkan hidupmu yang penuh plot twist dan mari berplot twist bareng📺🤯",
+    "Pamit! Jangan lupa senyum, dan ceria selalu semoga dengan ini mimin bisa sedikit nge hibur kalian 😂👋",
+    "Sampai jumpa! Bawa pulang sedikit semangat + istirahat yang cukup✨"
+  ];
+
+  // Unmute & play music once user interact (for autoplay policy)
+  document.addEventListener("click", ()=>{ bgMusic.muted = false; bgMusic.play().catch(()=>{}); }, {once:true});
+
+  const EMOJIS = ["😂","🤣","🤡","🛏️","⚡","🌵","📺","🍌","🦆","👋","🍩","☕"];
+
+  lastBtn.addEventListener("click", ()=>{
+    const random = LAST_QUOTES[Math.floor(Math.random()*LAST_QUOTES.length)];
+    lastMsg.textContent = random;
+
+    try{
+      if(Math.random() > 0.5){ funnySound.currentTime = 0; funnySound.play(); }
+      else { funnySound2.currentTime = 0; funnySound2.play(); }
+    }catch(e){}
+
+    const count = 6 + Math.floor(Math.random()*6);
+    for(let i=0;i<count;i++){
+      const span = document.createElement("span");
+      span.className = "emoji";
+      span.textContent = EMOJIS[Math.floor(Math.random()*EMOJIS.length)];
+      span.style.left = (Math.random()*95) + "vw";
+      span.style.animationDuration = (2.5 + Math.random()*3.5) + "s";
+      document.body.appendChild(span);
+      setTimeout(()=>span.remove(),9000);
+    }
+  });
+
+  toggleMusic.addEventListener("click", ()=>{
+    if(bgMusic.paused){ bgMusic.play().catch(()=>{}); toggleMusic.textContent="🔊 Musik On"; }
+    else { bgMusic.pause(); toggleMusic.textContent="🔇 Musik Off"; }
+  });
+
+  toTop && toTop.addEventListener("click", ()=> window.scrollTo({ top: 0, behavior:"smooth" }));
+
+  if(year) year.textContent = new Date().getFullYear();
+})();
+</script>
+<!-- ===== End Penutup Kocak + Footer Keren AutoPlay ===== -->
